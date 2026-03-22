@@ -1,0 +1,40 @@
+[
+  {
+    "type": "function",
+    "name": "acceptAdmin",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "admin",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "address", "internalType": "address" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "adminCancel",
+    "inputs": [
+      { "name": "taskId", "type": "uint256", "internalType": "uint256" },
+      { "name": "reason", "type": "string", "internalType": "string" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "TaskCreated",
+    "inputs": [
+      { "name": "taskId", "type": "uint256", "indexed": true, "internalType": "uint256" },
+      { "name": "poster", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "cid", "type": "string", "indexed": false, "internalType": "string" },
+      { "name": "budget", "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "deadline", "type": "uint64", "indexed": false, "internalType": "uint64" }
+    ]
+  }
+]
+
