@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAccount, useReadContract, useWriteContract } from 'wagmi'
 import { useParams } from 'next/navigation'
+import { keccak256, stringToHex } from 'viem'
 import { WORKER_REGISTRY } from '@/lib/contracts'
 import { pinToIPFS } from '@/lib/ipfs'
 import SkillTags from '@/components/SkillTags'
@@ -76,11 +77,8 @@ export default function WorkerProfilePage() {
         return mask | (BigInt(1) << BigInt(skillId))
       }, BigInt(0))
 
-      // Hash display name (keccak256)
-      const nameHash = `0x${Array.from(displayName).reduce(
-        (hash, char) => hash + char.charCodeAt(0).toString(16),
-        ''
-      ).padEnd(64, '0')}`
+      // Hash display name using keccak256 to align with contract expectations.
+      const nameHash = keccak256(stringToHex(displayName))
 
       registerWorker({
         ...WORKER_REGISTRY,
