@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { TASK_ESCROW } from '@/lib/contracts'
 import { pinToIPFS } from '@/lib/ipfs'
 import { monadTestnet } from '@/lib/wagmi'
+import TransactionStatus from '@/components/TransactionStatus'
 
 interface TaskFormData {
   title: string
@@ -38,8 +39,12 @@ export default function CreateTaskPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [txHash, setTxHash] = useState<string | undefined>(undefined)
 
-  const { writeContract: createTask } = useWriteContract()
+  const { writeContract: createTask, data: hash, isPending: isTxPending } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isConfirmedError, error: confirmError } = useWaitForTransactionReceipt({
+    hash,
+  })
 
   if (!address) {
     return (
@@ -103,16 +108,23 @@ export default function CreateTaskPage() {
         args: [metadataCid, BigInt(Math.floor(deadlineTime))],
         value: budgetInWei,
       })
-
-      // Redirect after successful submission
-      setTimeout(() => {
-        router.push('/')
-      }, 2000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create task')
     } finally {
       setLoading(false)
     }
+  }
+
+  // Update tx hash when write succeeds
+  if (hash && !txHash) {
+    setTxHash(hash)
+  }
+
+  // Redirect after tx is confirmed
+  if (isConfirmed && txHash) {
+    setTimeout(() => {
+      router.push('/')
+    }, 2000)
   }
 
   return (
@@ -124,6 +136,17 @@ export default function CreateTaskPage() {
           <div className="p-4 bg-red-100 text-red-800 rounded mb-6">
             {error}
           </div>
+        )}
+
+        {txHash && (
+          <TransactionStatus
+            hash={txHash}
+            isPending={isTxPending || isConfirming}
+            isSuccess={isConfirmed}
+            isError={isConfirmedError}
+            error={confirmError}
+            explorerUrl={monadTestnet.blockExplorers?.default?.url}
+          />
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg border border-gray-200">

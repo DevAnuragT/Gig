@@ -1,23 +1,34 @@
 'use client'
 
 import { useState } from 'react'
-import { useWriteContract } from 'wagmi'
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { TASK_ESCROW } from '@/lib/contracts'
 import { pinToIPFS } from '@/lib/ipfs'
+import { monadTestnet } from '@/lib/wagmi'
+import TransactionStatus from './TransactionStatus'
 
 export default function DeliverableForm({ taskId }: { taskId: number }) {
   const [summary, setSummary] = useState('')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>()
 
-  const { writeContract: submitDeliverable } = useWriteContract()
+  const { writeContract: submitDeliverable, isPending: isTxPending } = useWriteContract()
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+    isError: isConfirmedError,
+    error: confirmError,
+  } = useWaitForTransactionReceipt({
+    hash: txHash,
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
+    setTxHash(undefined)
 
     try {
       const deliverableCid = await pinToIPFS({
@@ -26,15 +37,23 @@ export default function DeliverableForm({ taskId }: { taskId: number }) {
         notes,
       })
 
-      submitDeliverable({
-        ...TASK_ESCROW,
-        functionName: 'submitDeliverable',
-        args: [BigInt(taskId), deliverableCid],
-      })
-
-      setSuccess(true)
-      setSummary('')
-      setNotes('')
+      submitDeliverable(
+        {
+          ...TASK_ESCROW,
+          functionName: 'submitDeliverable',
+          args: [BigInt(taskId), deliverableCid],
+        },
+        {
+          onSuccess: (hash) => {
+            setTxHash(hash)
+            setSummary('')
+            setNotes('')
+          },
+          onError: (err) => {
+            setError(err.message || 'Failed to submit deliverable')
+          },
+        }
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit deliverable')
     } finally {
@@ -46,13 +65,18 @@ export default function DeliverableForm({ taskId }: { taskId: number }) {
     <div className="bg-white p-6 rounded-lg border border-gray-200">
       <h2 className="text-xl font-semibold mb-4">Submit Deliverable</h2>
 
-      {success && (
-        <div className="p-4 bg-green-100 text-green-800 rounded mb-4">
-          ✓ Deliverable submitted successfully!
-        </div>
+      {txHash && (
+        <TransactionStatus
+          hash={txHash}
+          isPending={isTxPending || isConfirming}
+          isSuccess={isConfirmed}
+          isError={isConfirmedError}
+          error={confirmError}
+          explorerUrl={monadTestnet.blockExplorers?.default?.url}
+        />
       )}
 
-      {error && (
+      {error && !txHash && (
         <div className="p-4 bg-red-100 text-red-800 rounded mb-4">
           {error}
         </div>
@@ -88,10 +112,10 @@ export default function DeliverableForm({ taskId }: { taskId: number }) {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || isTxPending || isConfirming}
           className="w-full px-4 py-2 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? 'Submitting...' : 'Submit Deliverable'}
+          {loading || isTxPending ? 'Submitting...' : isConfirming ? 'Confirming...' : 'Submit Deliverable'}
         </button>
       </form>
     </div>
