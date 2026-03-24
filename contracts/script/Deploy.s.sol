@@ -4,32 +4,54 @@ pragma solidity ^0.8.24;
 import "forge-std/Script.sol";
 import "../src/WorkerRegistry.sol";
 import "../src/TaskEscrow.sol";
+import "./DeployConfig.s.sol";
 
-contract Deploy is Script {
+/**
+ * @title Deploy
+ * @notice Deploys WorkerRegistry and TaskEscrow to the configured network.
+ *
+ * Usage:
+ *   forge script script/Deploy.s.sol \
+ *     --rpc-url $MONAD_RPC_URL \
+ *     --broadcast \
+ *     --verify
+ *
+ * Required env vars: PRIVATE_KEY, ADMIN_ADDRESS
+ */
+contract Deploy is DeployConfig {
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
-        address admin = vm.envAddress("ADMIN_ADDRESS");
+        _loadConfig();
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy WorkerRegistry first
+        // 1. Deploy WorkerRegistry (no constructor args)
         WorkerRegistry workerRegistry = new WorkerRegistry();
         console.log("WorkerRegistry deployed at:", address(workerRegistry));
 
-        // Deploy TaskEscrow with WorkerRegistry address
+        // 2. Deploy TaskEscrow (requires registry + admin)
         TaskEscrow taskEscrow = new TaskEscrow(
             address(workerRegistry),
-            admin
+            adminAddress
         );
         console.log("TaskEscrow deployed at:", address(taskEscrow));
 
         vm.stopBroadcast();
 
-        // Output addresses for frontend
-        console.log("\n--- Deployment Complete ---");
-        console.log("NEXT_PUBLIC_WORKER_REGISTRY_ADDRESS=", address(workerRegistry));
-        console.log("NEXT_PUBLIC_TASK_ESCROW_ADDRESS=", address(taskEscrow));
-        console.log("Admin Address:", admin);
+        // --- Output summary for easy copy-paste ---
+        console.log("");
+        console.log("============================================");
+        console.log("  DEPLOYMENT COMPLETE");
+        console.log("============================================");
+        console.log("");
+        console.log("Add these to your .env / frontend .env.local:");
+        console.log("");
+        console.log("  NEXT_PUBLIC_WORKER_REGISTRY_ADDRESS=", address(workerRegistry));
+        console.log("  NEXT_PUBLIC_TASK_ESCROW_ADDRESS=", address(taskEscrow));
+        console.log("");
+        console.log("  WORKER_REGISTRY_ADDRESS=", address(workerRegistry));
+        console.log("  TASK_ESCROW_ADDRESS=", address(taskEscrow));
+        console.log("");
+        console.log("  Admin:", adminAddress);
+        console.log("============================================");
     }
 }
